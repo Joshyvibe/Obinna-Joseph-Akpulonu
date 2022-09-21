@@ -1,0 +1,1436 @@
+from tkinter import *
+import customtkinter
+from PIL import ImageTk, Image
+import sqlite3
+import random
+import datetime
+from tkcalendar import *
+from tkinter import messagebox
+
+x = datetime.datetime.now()
+
+def account_number_generator():
+    global acct
+    integers = random.sample(range(10), 9)
+    strings = [str(integer) for integer in integers]
+    a = '2' + ''.join(strings)
+    acct = int(a)
+    return acct
+global acct
+account_number_generator()
+
+
+def create():
+    conn = sqlite3.connect('banking.db')
+    cur = conn.cursor()
+    cur.execute(
+        "CREATE TABLE IF NOT EXISTS bank (id INTEGER PRIMARY KEY AUTOINCREMENT,fname text, lname text, email text,phone text, address text, dob text, acct_type text, gender text, username text UNIQUE,password text, transaction_pin integer, acctnumber integer,balance integer)")
+    cur.execute(
+        "CREATE TABLE IF NOT EXISTS trans_history (id INTEGER PRIMARY KEY AUTOINCREMENT,fname text, lname text,email text, acctnumber integer,trans_type text, amount integer, due TIMESTAMP)")
+    conn.commit()
+    conn.close()
+
+
+create()
+
+
+def view_balance():
+    conn = sqlite3.connect('banking.db')
+    cur = conn.cursor()
+    cur.execute('SELECT * FROM bank')
+    rows = cur.fetchall()
+    conn.close()
+    return rows
+
+
+print(f'current users: \n{view_balance()}')
+
+
+def registration_sql(fname, lname, email, phone, address, dob, gender, acct_type, username, password, transaction_pin=0000, acctnumber=acct, balance=0):
+    conn = sqlite3.connect('banking.db')
+    cur = conn.cursor()
+    check = cur.execute('SELECT username, password FROM bank WHERE username=? AND password=?', (username, password))
+    row_reg = check.fetchone()
+    check.execute("INSERT INTO bank VALUES (NULL,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                  (fname, lname, email, phone, address, dob, gender, acct_type, username, password, transaction_pin,
+                   acctnumber, balance))
+    print('Registration Successful..')
+    conn.commit()
+    # conn.close()
+
+def login_sql(username, password):
+    global bal_check_user
+    global un_for_check
+    un_for_check = username
+    conn = sqlite3.connect('banking.db')
+    cur = conn.cursor()
+    check = cur.execute('SELECT username, password, balance FROM bank WHERE username=? AND password=?',
+                        (username, password))
+    bal_check_row = check.fetchall()
+    # login checks..
+
+    if not bal_check_row:
+        messagebox.showerror('Login Error', 'User Not Found\nDetails(Username/Password) Invalid')
+        print('User does not exist, Create an Account!')
+
+
+    else:
+        bal_check_row
+        print('Login Check Successful...')
+        check.execute('SELECT * FROM bank WHERE username=? AND password=?', (username, password))
+        global user_login
+        user_login = check.fetchone()
+        print(f'Welcome {user_login[1]} {user_login[2]}, your account balance is ${user_login[13]}')
+        # all inside frame_for_user_details.
+        user_name = f'Welcome, {user_login[1]} {user_login[2]}.\n______________________________________________________'
+        user_info = f'Account Number - {user_login[10]} - Active\n______________________________________________________'
+        user_acct_type = f'Account Type - ${user_login[5]}\n______________________________________________________'
+        user_balance = f'Account Balance - ${user_login[11]}\n----------------------------------------------------'
+
+
+        check = cur.execute('SELECT balance FROM bank WHERE username=? AND password=?', (username, password))
+        bal_check_user = check.fetchone()
+        conn.close()
+        return bal_check_user, un_for_check
+
+
+
+
+
+
+
+class App(customtkinter.CTk):
+    def __init__(self):
+        super().__init__()
+        self.geometry("925x550")
+        self.title("Horizons Bank - LOG IN")
+        self.resizable(0, 0)
+        self.configure(fg_color='#feb13d')
+        self.iconbitmap('C:\\Users\\amy\\Downloads\\icon.ico')
+        self.app_img = ImageTk.PhotoImage(Image.open('C:\\Users\\amy\\Downloads\\applogo.png').resize((350, 550)))
+        self.label = customtkinter.CTkLabel(self, image=self.app_img).place(x=20, y=2)
+        self.welcome_label = customtkinter.CTkLabel(self.label, text='Welcome, Guest', bg_color='#ff7302',
+                                                    fg_color='#ff7302', text_color='white',
+                                                    corner_radius=12, text_font=('Arial Black', 18, 'bold')).place(x=40,
+                                                                                                                   y=15)
+        self.login_frame = customtkinter.CTkFrame(self, width=430, height=350, border_width=7, fg_color='#ff7302',
+                                                  bg_color='#feb13d',
+                                                  border_color='orange', corner_radius=25).place(x=450, y=120)
+        Label(self.login_frame, text='LOG IN', fg='white', bg='#ff7302',
+              font=('Arial Black', 23, 'bold', 'underline')).place(
+            x=590, y=135)
+        Label(self.login_frame, text='USERNAME', fg='white', bg='#ff7302',
+              font=('Arial Black', 13, 'bold', 'underline')).place(
+            x=600, y=195)
+        self.username_entry = customtkinter.CTkEntry(self.login_frame, width=250, height=40, border_width=4,
+                                                     fg_color='white',
+                                                     text_color='#404040', text_font='10',
+                                                     bg_color='#ff7302', border_color='orange', corner_radius=12,
+                                                     placeholder_text='Enter Username')
+        self.username_entry.place(x=530, y=225)
+        Label(self.login_frame, text='PASSWORD', fg='white', bg='#ff7302',
+              font=('Arial Black', 12, 'bold', 'underline')).place(
+            x=600, y=275)
+        self.password_entry = Entry(self.login_frame, width=35, fg='#404040', border=1,
+                                    bg='white', font=('Microsoft YaHei UI Light', 10), show='*')
+        self.password_entry.place(x=530, y=305)
+        check_button = Checkbutton(self.login_frame, bg='#ff7302', text='', command=self.show)
+        check_button.place(x=790, y=305)
+        customtkinter.CTkButton(self.login_frame, width=120, height=30, fg_color='orange',
+                                border_color='white', text='Log In', corner_radius=17, bg_color='#ff7302',
+                                text_font=('Arial Black', 10), command=self.login,
+                                hover_color='#FFC125', text_color='white').place(x=600, y=360)
+        Label(self.login_frame, text='Don\'t Have An Account Yet? ', fg='white', bg='#ff7302',
+              font=('yu gothic ui', 10, 'bold')).place(x=530, y=420)
+        self.signup_button = customtkinter.CTkButton(self.login_frame, width=80, height=30, fg_color='orange',
+                                                     text='SIGN  UP', corner_radius=17, bg_color='#ff7302',
+                                                     text_font=('arial black', 9), command=self.signup,
+                                                     hover_color='#FFC125', text_color='white').place(x=715, y=415)
+
+    def show(self):
+        if self.password_entry.cget('show') == '*':
+            self.password_entry.config(show='')
+        else:
+            self.password_entry.config(show='*')
+
+    def login(self):
+        if (len(self.username_entry.get()) == 0 or len(self.password_entry.get()) == 0):
+            messagebox.showerror("Login Error", "Fill Login Entries")
+        elif not login_sql(self.username_entry.get(), self.password_entry.get()):
+            #messagebox.showerror("Invalid Details", 'Invalid Username/Password')
+            pass
+
+
+        else:
+            login_sql(self.username_entry.get(), self.password_entry.get())
+            print(f'Application is now ACTIVE\n {user_login[1]} Logged In')
+            customtkinter.CTkFrame(self, width=925, height=550, fg_color='#feb13d').place(x=0, y=0)
+
+            self.home_img = ImageTk.PhotoImage(Image.open('C:\\Users\\amy\\Downloads\\home.png').resize((40, 40)))
+            self.app_img = ImageTk.PhotoImage(Image.open('C:\\Users\\amy\\Downloads\\applogo.png').resize((250, 330)))
+            self.profile_img = ImageTk.PhotoImage(Image.open('C:\\Users\\amy\\Downloads\\user.png').resize((40, 40)))
+            self.deposit_img = ImageTk.PhotoImage(
+                Image.open('C:\\Users\\amy\\Downloads\\deposit.png').resize((50, 50)))
+            self.withdraw_img = ImageTk.PhotoImage(
+                Image.open('C:\\Users\\amy\\Downloads\\withdraw.png').resize((50, 50)))
+            self.trasnfer_img = ImageTk.PhotoImage(
+                Image.open('C:\\Users\\amy\\Downloads\\transfer.png').resize((50, 50)))
+            self.change_pin_img = ImageTk.PhotoImage(
+                Image.open('C:\\Users\\amy\\Downloads\\logo.png').resize((50, 50)))
+            self.bill_img = ImageTk.PhotoImage(
+                Image.open('C:\\Users\\amy\\Downloads\\bill.png').resize((50, 50)))
+            self.topup_img = ImageTk.PhotoImage(
+                Image.open('C:\\Users\\amy\\Downloads\\top-up.png').resize((50, 50)))
+            self.invite_img = ImageTk.PhotoImage(
+                Image.open('C:\\Users\\amy\\Downloads\\add-friend.png').resize((50, 50)))
+
+            self.home_frame = customtkinter.CTkFrame(self, width=250, height=500, fg_color='#ff7302',
+                                                     corner_radius=30).place(x=30, y=20)
+            self.label = customtkinter.CTkLabel(self, image=self.app_img).place(x=30, y=140)
+            self.account_info_frame = customtkinter.CTkFrame(self, width=600, height=120, fg_color='#ff7302',
+                                                             border_color='#ff7302', border_width=6,
+                                                             corner_radius=30).place(x=300, y=20)
+            self.account_info_label = customtkinter.CTkLabel(self, fg_color='#ff7302', text_color='white',
+                                                             text_font=('yu gothi ui', 12, 'bold'),
+                                                             text=f" {user_login[1].upper()} {user_login[2].upper()}\n BALANCE : ${user_login[13]}.00\n {user_login[7].upper()} ACCOUNT\n ACCOUNT NO : {user_login[12]}",  anchor="w", justify=LEFT)
+            self.account_info_label.place(x=325, y=40)
+            self.functions_frame = customtkinter.CTkFrame(self, width=600, height=200, fg_color='#ff7302',
+                                                          corner_radius=30).place(x=300, y=150)
+            self.functions_frame2 = customtkinter.CTkFrame(self, width=600, height=150, border_color='#ff7302',
+                                                           border_width=6, fg_color='#ff7302',
+                                                           corner_radius=30).place(x=300, y=370)
+            self.billsbutton = customtkinter.CTkButton(self, width=100, height=80, border_width=3, image=self.bill_img, border_color='white',
+                                                       text='Pay Bills',
+                                                       bg_color='#ff7302', fg_color='silver',
+                                                       hover_color='#87CEFA', command=self.billspage,
+                                                       corner_radius=20)
+            self.billsbutton.place(x=330, y=400)
+            self.topupbutton = customtkinter.CTkButton(self, width=100, height=80, border_width=3, image=self.topup_img, border_color='white',
+                                                       text='Top Up',
+                                                       bg_color='#ff7302', fg_color='silver',
+                                                       hover_color='#87CEFA',command=self.topup_page,
+                                                       corner_radius=20)
+            self.topupbutton.place(x=520, y=400)
+            self.invitebutton = customtkinter.CTkButton(self, width=100, height=80, border_width=3, image=self.invite_img,border_color='white',
+                                                       text='Invite/Redeem',
+                                                       bg_color='#ff7302', fg_color='silver',
+                                                       hover_color='#87CEFA',
+                                                       corner_radius=20)
+            self.invitebutton.place(x=680, y=400)
+            self.deposit_button = customtkinter.CTkButton(self, width=100, height=80, border_width=3,
+                                                          border_color='white', text='', command=self.depositpage,
+                                                          bg_color='#ff7302', fg_color='silver', hover_color='#87CEFA',
+                                                          image=self.deposit_img, corner_radius=40).place(x=350, y=190)
+            self.withdrawal_button = customtkinter.CTkButton(self, width=100, height=80, border_width=3,
+                                                             command=self.withdrawpage,
+                                                             image=self.withdraw_img, border_color='white', text='',
+                                                             bg_color='#ff7302', fg_color='silver',
+                                                             hover_color='#87CEFA',
+                                                             corner_radius=40).place(x=480, y=190)
+            self.transfer_button = customtkinter.CTkButton(self, width=100, height=80, border_width=3,
+                                                           border_color='white', text='', cursor='hand2',
+                                                           command=self.transferpage,
+                                                           bg_color='#ff7302', fg_color='silver', hover_color='#87CEFA',
+                                                           image=self.trasnfer_img, corner_radius=40).place(x=620,
+                                                                                                            y=190)
+            self.change_pin_button = customtkinter.CTkButton(self, width=100, height=80, border_width=3,
+                                                           border_color='white', text='', cursor='hand2',
+                                                           command=self.change_pin_page,
+                                                           bg_color='#ff7302', fg_color='silver', hover_color='#87CEFA',
+                                                           image=self.change_pin_img, corner_radius=40).place(x=750,
+                                                                                                            y=190)
+            self.logout_button = customtkinter.CTkButton(self, width=120, height=40, border_width=2,
+                                                         border_color='white',
+                                                         text='LOG OUT', command=self.logout,
+                                                         bg_color='#ff7302', fg_color='gold', hover_color='#feb13d',
+                                                         corner_radius=40).place(x=85, y=475)
+            self.profile_button = customtkinter.CTkButton(self, width=100, height=80, border_width=6,
+                                                          border_color='orange',
+                                                          text='',
+                                                          bg_color='#ff7302', fg_color='silver', image=self.profile_img,
+                                                          hover_color='silver', corner_radius=40).place(x=750, y=40)
+            self.home_button = customtkinter.CTkButton(self, width=100, height=80, border_width=6,
+                                                       border_color='orange',
+                                                       text='', cursor='hand2',
+                                                       bg_color='#ff7302', fg_color='white', image=self.home_img,
+                                                       hover_color='#feb13d', corner_radius=40).place(x=100, y=50)
+            self.hometext = customtkinter.CTkLabel(self, text='HOME', bg_color='#ff7302', fg_color='#ff7302',
+                                                   text_color='white',
+                                                   corner_radius=12, text_font=('Arial Black', 18, 'bold')).place(x=80,
+                                                                                                                  y=130)
+            self.deposittext = customtkinter.CTkLabel(self, text='DEPOSIT', bg_color='#ff7302',
+                                                      fg_color='#ff7302', text_color='white',
+                                                      corner_radius=12, text_font=('Arial Black', 13, 'bold')).place(
+                x=325,
+                y=280)
+            self.withdrawaltext = customtkinter.CTkLabel(self, text='WITHDRAW', bg_color='#ff7302',
+                                                         fg_color='#ff7302', text_color='white',
+                                                         corner_radius=12, text_font=('Arial Black', 13, 'bold')).place(
+                x=460,
+                y=280)
+            self.transfertext = customtkinter.CTkLabel(self, text='TRANSFER', bg_color='#ff7302',
+                                                       fg_color='#ff7302', text_color='white',
+                                                       corner_radius=12, text_font=('Arial Black', 13, 'bold')).place(
+                x=600,
+                y=280)
+            self.change_pin_text = customtkinter.CTkLabel(self, text='CHANGE PIN', bg_color='#ff7302',
+                                                       fg_color='#ff7302', text_color='white',
+                                                       corner_radius=12, text_font=('Arial Black', 13, 'bold')).place(
+                x=730,
+                y=280)
+
+
+    def depositpage(self):
+        try:
+
+            username = self.username_entry.get()
+            customtkinter.CTkFrame(self, width=925, height=550, fg_color='#feb13d').place(x=0, y=0)
+
+            self.home_img = ImageTk.PhotoImage(Image.open('C:\\Users\\amy\\Downloads\\home.png').resize((40, 40)))
+            self.app_img = ImageTk.PhotoImage(
+                Image.open('C:\\Users\\amy\\Downloads\\applogo.png').resize((250, 330)))
+            self.profile_img = ImageTk.PhotoImage(
+                Image.open('C:\\Users\\amy\\Downloads\\user.png').resize((40, 40)))
+            self.deposit_img = ImageTk.PhotoImage(
+                Image.open('C:\\Users\\amy\\Downloads\\deposit.png').resize((50, 50)))
+            self.withdraw_img = ImageTk.PhotoImage(
+                Image.open('C:\\Users\\amy\\Downloads\\withdraw.png').resize((50, 50)))
+            self.trasnfer_img = ImageTk.PhotoImage(
+                Image.open('C:\\Users\\amy\\Downloads\\transfer.png').resize((50, 50)))
+            self.change_pin_img = ImageTk.PhotoImage(
+                Image.open('C:\\Users\\amy\\Downloads\\logo.png').resize((50, 50)))
+            self.bill_img = ImageTk.PhotoImage(
+                Image.open('C:\\Users\\amy\\Downloads\\bill.png').resize((50, 50)))
+            self.topup_img = ImageTk.PhotoImage(
+                Image.open('C:\\Users\\amy\\Downloads\\top-up.png').resize((50, 50)))
+            self.invite_img = ImageTk.PhotoImage(
+                Image.open('C:\\Users\\amy\\Downloads\\add-friend.png').resize((50, 50)))
+
+            self.home_frame = customtkinter.CTkFrame(self, width=250, height=500, fg_color='#ff7302',
+                                                     corner_radius=30).place(x=30, y=20)
+            self.account_info_frame = customtkinter.CTkFrame(self, width=600, height=120, fg_color='#ff7302',
+                                                             border_color='#ff7302', border_width=6,
+                                                             corner_radius=30).place(x=300, y=20)
+            self.account_info_label = customtkinter.CTkLabel(self, fg_color='#ff7302', text_color='white',
+                                                             text_font=('yu gothi ui', 12, 'bold'),
+                                                             text=f" {user_login[1].upper()} {user_login[2].upper()}\n BALANCE : ${user_login[13]}.00\n {user_login[7].upper()} ACCOUNT\n ACCOUNT NO : {user_login[12]}",  anchor="w", justify=LEFT)
+            self.account_info_label.place(x=325, y=40)
+            self.deposit_frame = customtkinter.CTkFrame(self, width=500, height=360, border_color='#ff7302',
+                                                        border_width=6, fg_color='#ff7302',
+                                                        corner_radius=40).place(x=340, y=150)
+            self.depositamount_entry = customtkinter.CTkEntry(self.deposit_frame, width=350, height=70, border_width=4,
+                                                              fg_color='white',
+                                                              text_color='#404040', text_font='10',
+                                                              bg_color='#ff7302', border_color='orange',
+                                                              corner_radius=40,
+                                                              placeholder_text='Enter Amount to Deposit')
+            self.depositamount_entry.place(x=420, y=190)
+            self.acctnumber_entry = customtkinter.CTkEntry(self.deposit_frame, width=350, height=70, border_width=4,
+                                                           fg_color='white',
+                                                           text_color='#404040', text_font='10',
+                                                           bg_color='#ff7302', border_color='orange',
+                                                           corner_radius=40,
+                                                           placeholder_text='Enter Account Number')
+            self.acctnumber_entry.place(x=420, y=290)
+            self.deposit = customtkinter.CTkButton(self, width=350, height=70, border_width=3,
+                                                   border_color='white', command=lambda : self.deposit_money(self.depositamount_entry.get(), self.acctnumber_entry.get()),
+                                                   text='Deposit', text_color='white', text_font=('arial black', 14),
+                                                   bg_color='#ff7302', fg_color='#feb13d',
+                                                   hover_color='gold', corner_radius=40)
+            self.deposit.place(x=420, y=390)
+            self.label = customtkinter.CTkLabel(self, image=self.app_img).place(x=30, y=140)
+            self.hometext = customtkinter.CTkLabel(self, text='HOME', bg_color='#ff7302', fg_color='#ff7302',
+                                                   text_color='white',
+                                                   corner_radius=12, text_font=('Arial Black', 18, 'bold')).place(x=80,
+                                                                                                                  y=130)
+            self.home_button = customtkinter.CTkButton(self, width=100, height=80, border_width=6,
+                                                       border_color='orange', command=self.homepage,
+                                                       text='',
+                                                       bg_color='#ff7302', fg_color='white', image=self.home_img,
+                                                       hover_color='#feb13d', corner_radius=40).place(x=100, y=50)
+            self.logout_button = customtkinter.CTkButton(self, width=120, height=40, border_width=2,
+                                                         border_color='white', command=self.logout,
+                                                         text='LOG OUT',
+                                                         bg_color='#ff7302', fg_color='gold', hover_color='#feb13d',
+                                                         corner_radius=40).place(x=85, y=475)
+            self.profile_button = customtkinter.CTkButton(self, width=100, height=80, border_width=6,
+                                                          border_color='orange',
+                                                          text='',
+                                                          bg_color='#ff7302', fg_color='silver', image=self.profile_img,
+                                                          hover_color='silver', corner_radius=40)
+            self.profile_button.place(x=750, y=40)
+        except NameError as e:
+            pass
+
+    def deposit_money(self, deposit_amt, acctnumber, username=None):
+
+        try:
+
+            global acct_check
+            global row_check
+            acct_check = acctnumber
+            conn = sqlite3.connect('banking.db')
+            cur = conn.cursor()
+            check = cur.execute('SELECT acctnumber, username, balance FROM bank WHERE acctnumber=? and username=?',
+                                (acctnumber, username))
+            row_check = check.fetchall()
+            if (len(self.depositamount_entry.get()) == 0 or len(self.acctnumber_entry.get()) == 0):
+                messagebox.showerror("Entries Error", "Entries Cannot Be Blank")
+                print('enter required entries..')
+            else:
+                if self.acctnumber_entry.get() != acct_check:
+                    print(row_check[0])
+                    print(acct_check)
+                    print('Wrong account number!')
+
+                else:
+                    if int(deposit_amt) <= 0 or int(deposit_amt) is float or int(deposit_amt) is str:
+                        messagebox.showerror('Deposit Amount Error', 'Enter A Valid Amount to Deposit')
+                    else:
+                        cur.execute('UPDATE bank SET BALANCE=BALANCE + {} WHERE acctnumber=?'.format(deposit_amt),
+                                    (acctnumber,))
+                        # cur.execute('UPDATE bank SET BALANCE=BALANCE - {} WHERE acctnumber=?'.format(deposit_amt),
+                        #            (acctnumber))
+                        c = 'Credit'
+                        cur.execute("INSERT INTO trans_history VALUES (NULL, ?,?,?,?,?,?,?)",
+                                    (user_login[1], user_login[2], user_login[3], user_login[12], c, f"{deposit_amt}",
+                                     x))
+                        usrbal = cur.execute(f"SELECT balance from bank WHERE acctnumber={user_login[12]}")
+
+                        global usr
+                        usr = usrbal.fetchone()
+                        usr = str(usr[0])
+                        conn.commit()
+                        conn.close()
+                        print(f' You deposited ${deposit_amt} new balance is ${usr}')
+                        messagebox.showinfo("Deposit Successful",
+                                            f"A Deposit of ${deposit_amt} has been made into Account {acctnumber}\nNew balance is ${usr}")
+                        deposit_amt.format('')
+        except (TypeError, ValueError, sqlite3.OperationalError) as e:
+            messagebox.showerror("Deposit Error", "Invalid Account Number")
+            print('Wrong Account Number..')
+
+    def withdrawpage(self):
+        try:
+
+            customtkinter.CTkFrame(self, width=925, height=550, fg_color='#feb13d').place(x=0, y=0)
+            self.home_img = ImageTk.PhotoImage(Image.open('C:\\Users\\amy\\Downloads\\home.png').resize((40, 40)))
+            self.app_img = ImageTk.PhotoImage(
+                Image.open('C:\\Users\\amy\\Downloads\\applogo.png').resize((250, 330)))
+            self.profile_img = ImageTk.PhotoImage(
+                Image.open('C:\\Users\\amy\\Downloads\\user.png').resize((40, 40)))
+            self.deposit_img = ImageTk.PhotoImage(
+                Image.open('C:\\Users\\amy\\Downloads\\deposit.png').resize((50, 50)))
+            self.withdraw_img = ImageTk.PhotoImage(
+                Image.open('C:\\Users\\amy\\Downloads\\withdraw.png').resize((50, 50)))
+            self.trasnfer_img = ImageTk.PhotoImage(
+                Image.open('C:\\Users\\amy\\Downloads\\transfer.png').resize((50, 50)))
+            self.change_pin_img = ImageTk.PhotoImage(
+                Image.open('C:\\Users\\amy\\Downloads\\logo.png').resize((50, 50)))
+            self.bill_img = ImageTk.PhotoImage(
+                Image.open('C:\\Users\\amy\\Downloads\\bill.png').resize((50, 50)))
+            self.topup_img = ImageTk.PhotoImage(
+                Image.open('C:\\Users\\amy\\Downloads\\top-up.png').resize((50, 50)))
+            self.invite_img = ImageTk.PhotoImage(
+                Image.open('C:\\Users\\amy\\Downloads\\add-friend.png').resize((50, 50)))
+            self.home_frame = customtkinter.CTkFrame(self, width=250, height=500, fg_color='#ff7302',
+                                                     corner_radius=30).place(x=30, y=20)
+            self.account_info_frame = customtkinter.CTkFrame(self, width=600, height=120, fg_color='#ff7302',
+                                                             border_color='#ff7302', border_width=6,
+                                                             corner_radius=30).place(x=300, y=20)
+            self.account_info_label = customtkinter.CTkLabel(self, fg_color='#ff7302', text_color='white',
+                                                             text_font=('yu gothi ui', 12, 'bold'),
+                                                             text=f" {user_login[1].upper()} {user_login[2].upper()}\n BALANCE : ${user_login[13]}.00\n {user_login[7].upper()} ACCOUNT\n ACCOUNT NO : {user_login[12]}",
+                                                             anchor="w", justify=LEFT)
+            self.account_info_label.place(x=325, y=40)
+            self.withdraw_frame = customtkinter.CTkFrame(self, width=500, height=360, border_color='#ff7302',
+                                                        border_width=6, fg_color='#ff7302',
+                                                        corner_radius=40).place(x=340, y=150)
+            self.withdrawamount_entry = customtkinter.CTkEntry(self.withdraw_frame, width=350, height=70,
+                                                               border_width=4,
+                                                               fg_color='white',
+                                                               text_color='#404040', text_font='10',
+                                                               bg_color='#ff7302', border_color='orange',
+                                                               corner_radius=40,
+                                                               placeholder_text='Enter Amount to Withdraw')
+            self.withdrawamount_entry.place(x=420, y=190)
+            self.acctnumber_entry = customtkinter.CTkEntry(self.withdraw_frame, width=350, height=70,
+                                                              border_width=4,
+                                                              fg_color='white',
+                                                              text_color='#404040', text_font='10',
+                                                              bg_color='#ff7302', border_color='orange',
+                                                              corner_radius=40,
+                                                              placeholder_text='Enter Account Number')
+            self.acctnumber_entry.place(x=420, y=290)
+            self.withdraw = customtkinter.CTkButton(self, width=350, height=70, border_width=3,
+                                                    border_color='white',
+                                                    text='Withdraw', text_color='white', text_font=('arial black', 14),
+                                                    bg_color='#ff7302', fg_color='#feb13d',
+                                                    hover_color='gold', corner_radius=40, command=lambda: self.withdraw_money(self.withdrawamount_entry.get(), self.acctnumber_entry.get()))
+            self.withdraw.place(x=420, y=390)
+            self.label = customtkinter.CTkLabel(self, image=self.app_img).place(x=30, y=140)
+            self.home_button = customtkinter.CTkButton(self, width=100, height=80, border_width=6,
+                                                       border_color='orange', command=self.homepage,
+                                                       text='',
+                                                       bg_color='#ff7302', fg_color='white', image=self.home_img,
+                                                       hover_color='#feb13d', corner_radius=40).place(x=100, y=50)
+            self.logout_button = customtkinter.CTkButton(self, width=120, height=40, border_width=2,
+                                                         border_color='white', command=self.logout,
+                                                         text='LOG OUT',
+                                                         bg_color='#ff7302', fg_color='gold', hover_color='#feb13d',
+                                                         corner_radius=40).place(x=85, y=475)
+            self.hometext = customtkinter.CTkLabel(self, text='HOME', bg_color='#ff7302', fg_color='#ff7302',
+                                                   text_color='white',
+                                                   corner_radius=12, text_font=('Arial Black', 18, 'bold')).place(x=80,
+                                                                                                                  y=130)
+            self.profile_button = customtkinter.CTkButton(self, width=100, height=80, border_width=6,
+                                                          border_color='orange',
+                                                          text='',
+                                                          bg_color='#ff7302', fg_color='silver', image=self.profile_img,
+                                                          hover_color='silver', corner_radius=40)
+            self.profile_button.place(x=750, y=40)
+        except NameError as e:
+            pass
+
+
+    def withdraw_money(self, withdraw_amt, acctnumber, username=None):
+        try:
+
+            global acct_check
+            global row_check
+            acct_check = acctnumber
+            conn = sqlite3.connect('banking.db')
+            cur = conn.cursor()
+            check = cur.execute('SELECT acctnumber, username, balance FROM bank WHERE acctnumber=? and username=?',
+                                (acctnumber, username))
+            row_check = check.fetchall()
+            if (len(self.withdrawamount_entry.get()) == 0 or len(self.acctnumber_entry.get()) == 0):
+                messagebox.showerror("Entries Error", "Entries Cannot Be Blank/Empty")
+                print('Enter Required Entries..')
+            elif self.withdrawamount_entry.get() > user_login[13]:
+                messagebox.showerror('Error', 'You don\'t have sufficient balance to\nmake this withdrawal')
+            else:
+                if acctnumber != acct_check:
+                    # print(row_check[0])
+                    print(acct_check)
+                    print('Wrong account number!')
+                    messagebox.showerror("Withdrawal Error", "Invalid Account Number")
+                else:
+                    if int(withdraw_amt) <= 0 or int(withdraw_amt) is float or int(withdraw_amt) is str:
+                        messagebox.showerror('Withdraw Amount Error', 'Enter A Valid Amount To Withdraw')
+                    else:
+                        cur.execute('UPDATE bank SET BALANCE=BALANCE - {} WHERE acctnumber=?'.format(withdraw_amt),
+                                    (acctnumber,))
+                        # cur.execute('UPDATE bank SET BALANCE=BALANCE - {} WHERE acctnumber=?'.format(deposit_amt),
+                        #            (acctnumber))
+                        d = 'Debit'
+
+                        cur.execute("INSERT INTO trans_history VALUES (NULL, ?,?,?,?,?,?,?)",
+                                    (user_login[1], user_login[2], user_login[3], user_login[12], d, f"-{withdraw_amt}",
+                                     x))
+                        usrbal = cur.execute(f"SELECT balance from bank WHERE acctnumber={user_login[12]}")
+
+                        global usr
+                        usr = usrbal.fetchone()
+                        usr = str(usr[0])
+                        conn.commit()
+                        conn.close()
+                        print(f' You withdrew ${withdraw_amt} new balance is ${usr}')
+                        messagebox.showinfo("Withdrawal Successful",
+                                            f"A Withdrawal of ${withdraw_amt} has been made from Account {acctnumber}\nNew Balance is ${usr}")
+                        withdraw_amt.format('')
+
+        except (TypeError, ValueError, sqlite3.OperationalError) as e:
+            messagebox.showerror("Withdraw Error", "Invalid Account Number")
+            print('Wrong Account Number..')
+
+
+    def billspage(self):
+        customtkinter.CTkFrame(self, width=925, height=550, fg_color='#feb13d').place(x=0, y=0)
+
+        self.home_img = ImageTk.PhotoImage(Image.open('C:\\Users\\amy\\Downloads\\home.png').resize((40, 40)))
+        self.app_img = ImageTk.PhotoImage(
+            Image.open('C:\\Users\\amy\\Downloads\\applogo.png').resize((250, 330)))
+        self.profile_img = ImageTk.PhotoImage(
+            Image.open('C:\\Users\\amy\\Downloads\\user.png').resize((40, 40)))
+        self.deposit_img = ImageTk.PhotoImage(
+            Image.open('C:\\Users\\amy\\Downloads\\deposit.png').resize((50, 50)))
+        self.withdraw_img = ImageTk.PhotoImage(
+            Image.open('C:\\Users\\amy\\Downloads\\withdraw.png').resize((50, 50)))
+        self.trasnfer_img = ImageTk.PhotoImage(
+            Image.open('C:\\Users\\amy\\Downloads\\transfer.png').resize((50, 50)))
+        self.change_pin_img = ImageTk.PhotoImage(
+            Image.open('C:\\Users\\amy\\Downloads\\logo.png').resize((50, 50)))
+        self.bill_img = ImageTk.PhotoImage(
+            Image.open('C:\\Users\\amy\\Downloads\\bill.png').resize((50, 50)))
+        self.topup_img = ImageTk.PhotoImage(
+            Image.open('C:\\Users\\amy\\Downloads\\top-up.png').resize((50, 50)))
+        self.invite_img = ImageTk.PhotoImage(
+            Image.open('C:\\Users\\amy\\Downloads\\add-friend.png').resize((50, 50)))
+        self.home_frame = customtkinter.CTkFrame(self, width=250, height=500, fg_color='#ff7302',
+                                                 corner_radius=30).place(x=30, y=20)
+        self.bill_frame = customtkinter.CTkFrame(self, width=500, height=360, border_color='#ff7302',
+                                                 border_width=6, fg_color='#ff7302',
+                                                 corner_radius=40).place(x=360, y=100)
+        customtkinter.CTkLabel(self.bill_frame, text='PAY ELECTRICITY BILL', text_font=('arial black', 17, 'underline'),
+                               bg_color='#ff7302',
+                               text_color='white').place(x=465,
+                                                         y=110)
+
+        def bill(choice):
+            print('Bill Type:', choice)
+
+        customtkinter.CTkLabel(self, text='Select Bill', bg_color='#ff7302', text_font=('arial black', 14),
+                               text_color='white').place(
+            x=540,
+            y=150)
+        self.billtype_entry = customtkinter.CTkOptionMenu(self, corner_radius=12, fg_color='#C1CDCD', width=300,
+                                                          bg_color='#ff7302', height=40,
+                                                          text_color='#404040', dropdown_color='white',
+                                                          dropdown_hover_color='orange',
+                                                          values=['Electricity', 'Cable Tv', 'Water',
+                                                                  'Betting/Lottery'], command=bill)
+        self.billtype_entry.place(x=460, y=190)
+        self.billamount_entry = customtkinter.CTkEntry(self.bill_frame, width=350, height=50,
+                                                       border_width=3,
+                                                       fg_color='white',
+                                                       text_color='#404040', text_font='10',
+                                                       bg_color='#ff7302', border_color='orange',
+                                                       corner_radius=40,
+                                                       placeholder_text='Enter Bill Amount')
+        self.billamount_entry.place(x=440, y=270)
+        self.bill = customtkinter.CTkButton(self, width=350, height=70, border_width=3,
+                                            border_color='white',
+                                            text='Pay Bill', text_font=('arial black', 14), text_color='white',
+                                            bg_color='#ff7302', fg_color='#feb13d',
+                                            hover_color='gold', corner_radius=40,
+                                            command=lambda: self.bill_money(self.billamount_entry.get(),
+                                                                            self.billtype_entry.get()))
+        self.bill.place(x=440, y=360)
+        self.label = customtkinter.CTkLabel(self, image=self.app_img).place(x=30, y=140)
+        self.home_button = customtkinter.CTkButton(self, width=100, height=80, border_width=6,
+                                                   border_color='orange', command=self.homepage,
+                                                   text='',
+                                                   bg_color='#ff7302', fg_color='white', image=self.home_img,
+                                                   hover_color='#feb13d', corner_radius=40).place(x=100, y=50)
+        self.logout_button = customtkinter.CTkButton(self, width=120, height=40, border_width=2,
+                                                     border_color='white', command=self.logout,
+                                                     text='LOG OUT',
+                                                     bg_color='#ff7302', fg_color='gold', hover_color='#feb13d',
+                                                     corner_radius=40).place(x=85, y=475)
+        self.hometext = customtkinter.CTkLabel(self, text='HOME', bg_color='#ff7302', fg_color='#ff7302',
+                                               text_color='white',
+                                               corner_radius=12, text_font=('Arial Black', 18, 'bold')).place(x=80,
+                                                                                                              y=130)
+    def bill_money(self, bill_amt, meternumber, username=None):
+
+        try:
+
+            global meter_check
+            global row_check
+            meter_check = meternumber
+            conn = sqlite3.connect('banking.db')
+            cur = conn.cursor()
+            check = cur.execute('SELECT acctnumber, username, balance FROM bank WHERE acctnumber=? and username=?',
+                                (meternumber, username))
+            row_check = check.fetchall()
+            if (len(self.billamount_entry.get()) == 0 or len(self.meternumber_entry.get()) == 0):
+                messagebox.showerror("Entries Error", "Entries Cannot Be Blank")
+                print('enter required entries..')
+            else:
+                if self.meternumber_entry.get() != meter_check:
+                    print(row_check[0])
+                    print(acct_check)
+                    print('Wrong account number!')
+
+                else:
+                    if int(bill_amt) <= 0:
+                        messagebox.showerror("Bill Amount Error', 'Enter A Valid Amount")
+                    else:
+                        cur.execute('UPDATE bank SET BALANCE=BALANCE - {} WHERE acctnumber=?'.format(bill_amt),
+                                    (meternumber,))
+                        # cur.execute('UPDATE bank SET BALANCE=BALANCE - {} WHERE acctnumber=?'.format(deposit_amt),
+                        #            (acctnumber))
+                        c = 'Debit(bill)'
+                        cur.execute("INSERT INTO trans_history VALUES (NULL, ?,?,?,?,?,?,?)",
+                                    (user_login[1], user_login[2], user_login[3], user_login[12], c, f"-{bill_amt}",
+                                     x))
+                        usrbal = cur.execute(f"SELECT balance from bank WHERE acctnumber={user_login[12]}")
+
+                        global usr
+                        usr = usrbal.fetchone()
+                        usr = str(usr[0])
+                        conn.commit()
+                        conn.close()
+                        print(f' You paid electricy bill ${bill_amt} new balance is ${usr}')
+                        messagebox.showinfo("Electricity Bill Successful",
+                                            f"You paid Electricity bill of ${bill_amt}\nTo PHCN with meter NO: {meternumber}\nNew balance is ${usr}")
+                        bill_amt.format('')
+        except (TypeError, ValueError, sqlite3.OperationalError) as e:
+            messagebox.showerror("Meter No Error", "Invalid Meter Number")
+            print('Wrong Meter Number..')
+
+
+
+    def topup_page(self):
+        customtkinter.CTkFrame(self, width=925, height=550, fg_color='#feb13d').place(x=0, y=0)
+
+        self.home_img = ImageTk.PhotoImage(Image.open('C:\\Users\\amy\\Downloads\\home.png').resize((40, 40)))
+        self.app_img = ImageTk.PhotoImage(
+            Image.open('C:\\Users\\amy\\Downloads\\applogo.png').resize((250, 330)))
+        self.profile_img = ImageTk.PhotoImage(
+            Image.open('C:\\Users\\amy\\Downloads\\user.png').resize((40, 40)))
+        self.deposit_img = ImageTk.PhotoImage(
+            Image.open('C:\\Users\\amy\\Downloads\\deposit.png').resize((50, 50)))
+        self.withdraw_img = ImageTk.PhotoImage(
+            Image.open('C:\\Users\\amy\\Downloads\\withdraw.png').resize((50, 50)))
+        self.trasnfer_img = ImageTk.PhotoImage(
+            Image.open('C:\\Users\\amy\\Downloads\\transfer.png').resize((50, 50)))
+        self.change_pin_img = ImageTk.PhotoImage(
+            Image.open('C:\\Users\\amy\\Downloads\\logo.png').resize((50, 50)))
+        self.bill_img = ImageTk.PhotoImage(
+            Image.open('C:\\Users\\amy\\Downloads\\bill.png').resize((50, 50)))
+        self.topup_img = ImageTk.PhotoImage(
+            Image.open('C:\\Users\\amy\\Downloads\\top-up.png').resize((50, 50)))
+        self.invite_img = ImageTk.PhotoImage(
+            Image.open('C:\\Users\\amy\\Downloads\\add-friend.png').resize((50, 50)))
+        self.home_frame = customtkinter.CTkFrame(self, width=250, height=500, fg_color='#ff7302',
+                                                 corner_radius=30).place(x=30, y=20)
+        self.topup_frame = customtkinter.CTkFrame(self, width=500, height=360, border_color='#ff7302',
+                                                  border_width=6, fg_color='#ff7302',
+                                                  corner_radius=40).place(x=340, y=130)
+        customtkinter.CTkLabel(self.topup_frame, text='BUY AIRTIME',
+                               text_font=('arial black', 18, 'bold', 'underline'), bg_color='#ff7302',
+                               text_color='white').place(x=500,
+                                                         y=160)
+        self.airtimeamount_entry = customtkinter.CTkEntry(self.topup_frame, width=350, height=50,
+                                                          border_width=3,
+                                                          fg_color='white',
+                                                          text_color='#404040', text_font='10',
+                                                          bg_color='#ff7302', border_color='orange',
+                                                          corner_radius=40,
+                                                          placeholder_text='Airtime Amount')
+        self.airtimeamount_entry.place(x=420, y=220)
+        self.phonenumber_entry = customtkinter.CTkEntry(self.topup_frame, width=350, height=50,
+                                                        border_width=3,
+                                                        fg_color='white',
+                                                        text_color='#404040', text_font='10',
+                                                        bg_color='#ff7302', border_color='orange',
+                                                        corner_radius=40,
+                                                        placeholder_text='Phone Number')
+        self.phonenumber_entry.place(x=420, y=300)
+        self.topup = customtkinter.CTkButton(self, width=350, height=60, border_width=3,
+                                             border_color='white',
+                                             text='TOP UP', text_color='white', text_font=('arial black', 15),
+                                             bg_color='#ff7302', fg_color='#feb13d',
+                                             hover_color='gold', corner_radius=40,
+                                             command=lambda: self.topup_money(self.airtimeamount_entry.get(),
+                                                                              self.phonenumber_entry.get()))
+        self.topup.place(x=420, y=380)
+        self.label = customtkinter.CTkLabel(self, image=self.app_img).place(x=30, y=140)
+        self.hometext = customtkinter.CTkLabel(self, text='HOME', bg_color='#ff7302', fg_color='#ff7302',
+                                               text_color='white',
+                                               corner_radius=12, text_font=('Arial Black', 18, 'bold')).place(x=80,
+                                                                                                              y=130)
+        self.home_button = customtkinter.CTkButton(self, width=100, height=80, border_width=6,
+                                                   border_color='orange', command=self.homepage,
+                                                   text='',
+                                                   bg_color='#ff7302', fg_color='white', image=self.home_img,
+                                                   hover_color='#feb13d', corner_radius=40).place(x=100, y=50)
+        self.logout_button = customtkinter.CTkButton(self, width=120, height=40, border_width=2,
+                                                     border_color='white', command=self.logout,
+                                                     text='LOG OUT',
+                                                     bg_color='#ff7302', fg_color='gold', hover_color='#feb13d',
+                                                     corner_radius=40).place(x=85, y=475)
+
+
+    def topup_money(self, airtime_amt, phonenumber, username=None):
+
+        try:
+
+            global phone_check
+            global row_check
+            phone_check = phonenumber
+            conn = sqlite3.connect('banking.db')
+            cur = conn.cursor()
+            check = cur.execute('SELECT phone, username, balance FROM bank WHERE phone=? and username=?',
+                                (phonenumber, username))
+            row_check = check.fetchall()
+            if (len(self.airtimeamount_entry.get()) == 0 or len(self.phonenumber_entry.get()) == 0):
+                messagebox.showerror("Entries Error", "Entries Cannot Be Blank")
+                print('enter required entries..')
+            else:
+                if self.phonenumber_entry.get() != phone_check:
+                    #print(row_check[0])
+                    #print(phone_check)
+                    print('Wrong account number!')
+
+                else:
+                    if int(airtime_amt) <= 0:
+                        messagebox.showerror("Bill Amount Error', 'Enter A Valid Amount")
+                    else:
+                        cur.execute('UPDATE bank SET BALANCE=BALANCE - {} WHERE phone=?'.format(airtime_amt),
+                                    (phonenumber,))
+                        # cur.execute('UPDATE bank SET BALANCE=BALANCE - {} WHERE acctnumber=?'.format(deposit_amt),
+                        #            (acctnumber))
+                        c = 'Airtime'
+                        cur.execute("INSERT INTO trans_history VALUES (NULL, ?,?,?,?,?,?,?)",
+                                    (user_login[1], user_login[2], user_login[3], user_login[12], c, f"-{airtime_amt}",
+                                     x))
+                        usrbal = cur.execute(f"SELECT balance from bank WHERE acctnumber={user_login[12]}")
+
+                        global usr
+                        usr = usrbal.fetchone()
+                        usr = str(usr[0])
+                        conn.commit()
+                        conn.close()
+                        print(f' You paid electricy bill ${airtime_amt} new balance is ${usr}')
+                        messagebox.showinfo("Airtime purchase Successful",
+                                            f"Aitime Purchase of ${airtime_amt}\nTo Phone NO: {phonenumber} is successful!\nNew balance is ${usr}")
+                        airtime_amt.format('')
+        except (TypeError, ValueError, sqlite3.OperationalError) as e:
+            messagebox.showerror("Phone No Error", "Invalid Phone Number")
+            print('Wrong Phone Number..')
+
+
+
+    def transferpage(self):
+        customtkinter.CTkFrame(self, width=925, height=550, fg_color='#feb13d').place(x=0, y=0)
+
+        self.home_img = ImageTk.PhotoImage(Image.open('C:\\Users\\amy\\Downloads\\home.png').resize((40, 40)))
+        self.app_img = ImageTk.PhotoImage(
+            Image.open('C:\\Users\\amy\\Downloads\\applogo.png').resize((250, 330)))
+        self.profile_img = ImageTk.PhotoImage(
+            Image.open('C:\\Users\\amy\\Downloads\\user.png').resize((40, 40)))
+        self.deposit_img = ImageTk.PhotoImage(
+            Image.open('C:\\Users\\amy\\Downloads\\deposit.png').resize((50, 50)))
+        self.withdraw_img = ImageTk.PhotoImage(
+            Image.open('C:\\Users\\amy\\Downloads\\withdraw.png').resize((50, 50)))
+        self.trasnfer_img = ImageTk.PhotoImage(
+            Image.open('C:\\Users\\amy\\Downloads\\transfer.png').resize((50, 50)))
+        self.change_pin_img = ImageTk.PhotoImage(
+            Image.open('C:\\Users\\amy\\Downloads\\logo.png').resize((50, 50)))
+        self.bill_img = ImageTk.PhotoImage(
+            Image.open('C:\\Users\\amy\\Downloads\\bill.png').resize((50, 50)))
+        self.topup_img = ImageTk.PhotoImage(
+            Image.open('C:\\Users\\amy\\Downloads\\top-up.png').resize((50, 50)))
+        self.invite_img = ImageTk.PhotoImage(
+            Image.open('C:\\Users\\amy\\Downloads\\add-friend.png').resize((50, 50)))
+        self.home_frame = customtkinter.CTkFrame(self, width=250, height=500, fg_color='#ff7302',
+                                                 corner_radius=30).place(x=30, y=20)
+        self.hometext = customtkinter.CTkLabel(self, text='HOME', bg_color='#ff7302', fg_color='#ff7302',
+                                               text_color='white',
+                                               corner_radius=12, text_font=('Arial Black', 18, 'bold')).place(x=80,
+                                                                                                              y=130)
+        self.account_info_frame = customtkinter.CTkFrame(self, width=600, height=120, fg_color='#ff7302',
+                                                         border_color='#ff7302', border_width=6,
+                                                         corner_radius=30).place(x=300, y=20)
+        self.account_info_label = customtkinter.CTkLabel(self, fg_color='#ff7302', text_color='white',
+                                                         text_font=('yu gothi ui', 12, 'bold'),
+                                                         text=f" {user_login[1].upper()} {user_login[2].upper()}\n BALANCE : ${user_login[13]}.00\n {user_login[7].upper()} ACCOUNT\n ACCOUNT NO : {user_login[12]}",
+                                                         anchor="w", justify=LEFT)
+        self.account_info_label.place(x=325, y=40)
+        self.transfer_frame = customtkinter.CTkFrame(self, width=500, height=360, border_color='#ff7302',
+                                                     border_width=6, fg_color='#ff7302',
+                                                     corner_radius=40).place(x=340, y=150)
+        self.transferamount_entry = customtkinter.CTkEntry(self.transfer_frame, width=350, height=70,
+                                                           border_width=3,
+                                                           fg_color='white',
+                                                           text_color='#404040', text_font='10',
+                                                           bg_color='#ff7302', border_color='orange',
+                                                           corner_radius=40,
+                                                           placeholder_text='Enter Amount to Transfer')
+        self.transferamount_entry.place(x=420, y=190)
+        self.acctnumber_entry = customtkinter.CTkEntry(self.transfer_frame, width=350, height=70,
+                                                          border_width=3,
+                                                          fg_color='white',
+                                                          text_color='#404040', text_font='10',
+                                                          bg_color='#ff7302', border_color='orange',
+                                                          corner_radius=40,
+                                                          placeholder_text='Enter Account Number')
+        self.acctnumber_entry.place(x=420, y=280)
+        customtkinter.CTkLabel(self.transfer_frame, text='TRANSACTION PIN',
+                               text_font=('yu gothic ui', 12, 'bold'), fg_color='#ff7302',
+                               text_color='white').place(x=520,
+                                                         y=350)
+        self.transaction_pin_entry = Entry(self.transfer_frame, width=40, fg='#404040', border=1,
+                                           bg='white', font=('Microsoft YaHei UI Light', 10), show='*')
+        self.transaction_pin_entry.place(x=450, y=380)
+        self.transfer = customtkinter.CTkButton(self, width=350, height=70, border_width=3,
+                                                border_color='white',
+                                                text='Transfer', text_color='white', text_font=('arial black', 14),
+                                                bg_color='#ff7302', fg_color='#feb13d',
+                                                hover_color='gold', corner_radius=40, command=lambda: self.transfer_money(self.transferamount_entry.get(), self.acctnumber_entry.get(), self.transaction_pin_entry.get()))
+        self.transfer.place(x=420, y=420)
+        self.label = customtkinter.CTkLabel(self, image=self.app_img).place(x=30, y=140)
+        self.home_button = customtkinter.CTkButton(self, width=100, height=80, border_width=6,
+                                                   border_color='orange', command=self.homepage,
+                                                   text='',
+                                                   bg_color='#ff7302', fg_color='white', image=self.home_img,
+                                                   hover_color='#feb13d', corner_radius=40).place(x=100, y=50)
+        self.logout_button = customtkinter.CTkButton(self, width=120, height=40, border_width=2,
+                                                     border_color='white', command=self.logout,
+                                                     text='LOG OUT',
+                                                     bg_color='#ff7302', fg_color='gold', hover_color='#feb13d',
+                                                     corner_radius=40).place(x=85, y=475)
+        self.hometext = customtkinter.CTkLabel(self, text='HOME', bg_color='#ff7302', fg_color='#ff7302',
+                                               text_color='white',
+                                               corner_radius=12, text_font=('Arial Black', 18, 'bold')).place(x=80,
+                                                                                                              y=130)
+        self.profile_button = customtkinter.CTkButton(self, width=100, height=80, border_width=6,
+                                                      border_color='orange',
+                                                      text='',
+                                                      bg_color='#ff7302', fg_color='silver', image=self.profile_img,
+                                                      hover_color='silver', corner_radius=40)
+        self.profile_button.place(x=750, y=40)
+
+    def transfer_money(self, transfer_amt, acctnumber, transaction_pin, fname=None, lname=None):
+        #try:
+
+        global acct_check1
+        global row_check
+        global row_check2
+        global fn
+        global ln
+        pin = transaction_pin
+        fn = fname
+        ln = lname
+        acct_check1 = acctnumber
+        conn = sqlite3.connect('banking.db')
+        cur = conn.cursor()
+        check1 = cur.execute('SELECT acctnumber, fname, lname, email, balance FROM bank WHERE acctnumber=?',
+                            (acctnumber,))
+        #print(check1)
+        #check2 = cur.execute('SELECT acctnumber, fname, lname, balance FROM bank WHERE acctnumber=?, fname=?, lname=?, transaction_pin',
+                            #(acctnumber, fname, lname, transaction_pin,))
+        row_check1 = check1.fetchone()
+        #row_check2 = check2.fetchall()
+        print(row_check1)
+        print(row_check1[2])
+        global t_list
+
+        t_list = str(user_login[11])
+
+
+
+        #print(acct_check1)
+        if (len(self.transferamount_entry.get()) == 0 or len(self.acctnumber_entry.get()) == 0):
+            messagebox.showerror("Entries Error", "Entries Cannot Be Blank")
+            print('enter required entries..')
+        else:
+            if len(self.transaction_pin_entry.get()) != len(t_list):
+                print(t_list)
+                print(type(self.transaction_pin_entry))
+                print(user_login[11])
+                messagebox.showerror("Pin Error", "Enter A Valid PIN")
+
+            else:
+                if int(transfer_amt) <= 0:
+                    messagebox.showerror("Transfer Amount Error", "Enter A Valid Amount to Transfer")
+                    print(pin)
+
+
+
+                else:
+                    messagebox.askquestion("Account Name", f"Account name to transfer is {row_check1[1]} {row_check1[2]}")
+                    cur.execute(f"UPDATE bank SET BALANCE=BALANCE - {transfer_amt} WHERE acctnumber={user_login[12]}")
+                    t = "Debit(Transfer)"
+                    c = 'Credit(Transfer)'
+                    cur.execute("INSERT INTO trans_history VALUES (NULL, ?,?,?,?,?,?,?)",
+                                (user_login[1], user_login[2], user_login[3], user_login[12], t, f"-{transfer_amt}", x))
+                    cur.execute("INSERT INTO trans_history VALUES (NULL, ?,?,?,?,?,?,?)",
+                                (row_check1[1], row_check1[2], row_check1[3], row_check1[0], c, transfer_amt, x))
+                    cur.execute(f"UPDATE bank SET BALANCE=BALANCE + {transfer_amt} WHERE acctnumber={row_check1[0]}")
+                    usrbal = cur.execute(f"SELECT balance from bank WHERE acctnumber={user_login[12]}")
+
+                    global usr
+                    usr = usrbal.fetchone()
+                    usr = str(usr[0])
+                    conn.commit()
+                    conn.close()
+                    print(f' You transfered ${transfer_amt} new balance is ${usr}')
+                    messagebox.showinfo("Transfer Successful",
+                                        f"Transfer of ${transfer_amt} has been made into Account NO: {row_check1[0]}\nwith Account Name: {row_check1[1]} {row_check1[2]}\nThank you for banking with us\nHB BANK")
+                    transfer_amt.format('')
+        #except (TypeError, ValueError, sqlite3.OperationalError) as e:
+        #    messagebox.showerror("Transfer Error", "Invalid Account Number")
+        #    print('Wrong Account Number..')
+
+    def change_pin_page(self):
+        try:
+            username = self.username_entry.get()
+            customtkinter.CTkFrame(self, width=925, height=550, fg_color='#feb13d').place(x=0, y=0)
+            self.home_img = ImageTk.PhotoImage(Image.open('C:\\Users\\amy\\Downloads\\home.png').resize((40, 40)))
+            self.app_img = ImageTk.PhotoImage(
+                Image.open('C:\\Users\\amy\\Downloads\\applogo.png').resize((250, 330)))
+            self.profile_img = ImageTk.PhotoImage(
+                Image.open('C:\\Users\\amy\\Downloads\\user.png').resize((40, 40)))
+            self.deposit_img = ImageTk.PhotoImage(
+                Image.open('C:\\Users\\amy\\Downloads\\deposit.png').resize((50, 50)))
+            self.withdraw_img = ImageTk.PhotoImage(
+                Image.open('C:\\Users\\amy\\Downloads\\withdraw.png').resize((50, 50)))
+            self.transfer_img = ImageTk.PhotoImage(
+                Image.open('C:\\Users\\amy\\Downloads\\transfer.png').resize((50, 50)))
+            self.change_pin_img = ImageTk.PhotoImage(
+                Image.open('C:\\Users\\amy\\Downloads\\logo.png').resize((50, 50)))
+            self.home_frame = customtkinter.CTkFrame(self, width=250, height=500, fg_color='#ff7302',
+                                                     corner_radius=30).place(x=30, y=20)
+            self.change_pin_frame = customtkinter.CTkFrame(self, width=500, height=360, border_color='#ff7302',
+                                                           border_width=6, fg_color='#ff7302',
+                                                           corner_radius=40).place(x=340, y=120)
+            self.old_pin_entry = Entry(self.change_pin_frame, width=35, fg='#404040', border=1,
+                                       bg='white', font=('Microsoft YaHei UI Light', 10), show='*')
+            self.old_pin_entry.place(x=450, y=180)
+            customtkinter.CTkLabel(self.change_pin_frame, text='CURRENT PIN',
+                                   text_font=('yu gothic ui', 12, 'bold'), bg_color='#ff7302',
+                                   text_color='white').place(x=490,
+                                                             y=150)
+            self.new_pin_entry = Entry(self.change_pin_frame, width=35, fg='#404040', border=1,
+                                       bg='white', font=('Microsoft YaHei UI Light', 10), show='*')
+            self.new_pin_entry.place(x=450, y=240)
+            customtkinter.CTkLabel(self.change_pin_frame, text='NEW PIN', bg='#ff7302',
+                                   text_font=('yu gothic ui', 12, 'bold'), bg_color='#ff7302',
+                                   text_color='white').place(x=490,
+                                                             y=210)
+            self.retype_pin_entry = Entry(self.change_pin_frame, width=35, fg='#404040', border=1,
+                                          bg='white', font=('Microsoft YaHei UI Light', 10), show='*')
+            self.retype_pin_entry.place(x=450, y=300)
+            customtkinter.CTkLabel(self.change_pin_frame, text='CONFIRM NEW PIN',
+                                   text_font=('yu gothic ui', 12, 'bold'), bg_color='#ff7302',
+                                   text_color='white').place(x=490,
+                                                             y=270)
+
+            def show1():
+                if self.old_pin_entry.cget('show') == '*':
+                    self.old_pin_entry.config(show='')
+                else:
+                    self.old_pin_entry.config(show='*')
+
+            check_button1 = Checkbutton(self.change_pin_frame, bg='#ff7302', text='', command=show1)
+            check_button1.place(x=700, y=180)
+
+            def show1():
+                if self.new_pin_entry.cget('show') == '*':
+                    self.new_pin_entry.config(show='')
+                else:
+                    self.new_pin_entry.config(show='*')
+
+            check_button2 = Checkbutton(self.change_pin_frame, bg='#ff7302', text='', command=show1)
+            check_button2.place(x=700, y=240)
+
+            def show1():
+                if self.retype_pin_entry.cget('show') == '*':
+                    self.retype_pin_entry.config(show='')
+                else:
+                    self.retype_pin_entry.config(show='*')
+
+            check_button3 = Checkbutton(self.change_pin_frame, bg='#ff7302', text='', command=show1)
+            check_button3.place(x=700, y=300)
+            self.changepin = customtkinter.CTkButton(self, width=250, height=60, border_width=3,
+                                                     border_color='white',
+                                                     text='Change PIN', text_color='white',
+                                                     text_font=('arial black', 14),
+                                                     bg_color='#ff7302', fg_color='#feb13d',
+                                                     hover_color='gold', corner_radius=40,
+                                                     command=lambda: self.change_pin(self.old_pin_entry.get(),
+                                                                                     self.new_pin_entry.get(),
+                                                                                     self.retype_pin_entry.get()))
+
+            self.changepin.place(x=450, y=380)
+            self.label = customtkinter.CTkLabel(self, image=self.app_img).place(x=30, y=140)
+            self.home_button = customtkinter.CTkButton(self, width=100, height=80, border_width=6,
+                                                       border_color='orange', command=self.homepage,
+                                                       text='',
+                                                       bg_color='#ff7302', fg_color='white', image=self.home_img,
+                                                       hover_color='#feb13d', corner_radius=40).place(x=100, y=50)
+            self.logout_button = customtkinter.CTkButton(self, width=120, height=40, border_width=2,
+                                                         border_color='white', command=self.logout,
+                                                         text='LOG OUT',
+                                                         bg_color='#ff7302', fg_color='gold', hover_color='#feb13d',
+                                                         corner_radius=40).place(x=85, y=475)
+            self.hometext = customtkinter.CTkLabel(self, text='HOME', bg_color='#ff7302', fg_color='#ff7302',
+                                                   text_color='white',
+                                                   corner_radius=12, text_font=('Arial Black', 18, 'bold')).place(x=80,
+                                                                                                                  y=130)
+        except NameError as e:
+            pass
+
+    def change_pin(self, old_pin, new_pin, retype_pin):
+        #try:
+
+        global acct_check1
+
+        global row_check2
+
+        #pin = transaction_pin
+        #fn = fname
+        #ln = lname
+        #pin_check = old_pin
+        conn = sqlite3.connect('banking.db')
+        cur = conn.cursor()
+        check2 = cur.execute('SELECT transaction_pin, balance FROM bank WHERE transaction_pin=?',
+                            (old_pin,))
+        #print(check1)
+
+        row_check2 = check2.fetchone()
+        #row_check2 = check2.fetchall()
+        #print(row_check2)
+        global t_list
+
+        t_list = str(user_login[11])
+        #self.old_pin_entry = t_list
+
+        #print(acct_check1)
+        if (len(self.new_pin_entry.get()) == 0 or len(self.retype_pin_entry.get()) == 0):
+            messagebox.showerror("Entries Error", "Entries Cannot Be Blank")
+            print('enter required entries..')
+        else:
+            if (len(self.old_pin_entry.get()) != len(t_list)):
+                #print(d_list)
+                #print(type(self.transaction_pin_entry))
+                #print(user_login[11])
+                print(t_list)
+                messagebox.showerror("Pin Error", "Enter A Valid PIN")
+            else:
+                u_list = str(self.new_pin_entry.get())
+                if (len(self.retype_pin_entry.get()) != len(u_list)):
+                    messagebox.showerror("New Pin Error", "New PIN must match retype PIN")
+                else:
+                    cur.execute(f"UPDATE bank SET transaction_pin={self.new_pin_entry.get()} WHERE acctnumber={user_login[12]}")
+                    conn.commit()
+                    conn.close()
+                    print(f' Transaction Pin changed successfull')
+                    messagebox.showinfo("Change PIN Successful",
+                                        f"PIN has been changed successfully")
+
+        #except (TypeError, ValueError, sqlite3.OperationalError) as e:
+         #   messagebox.showerror("PIN Error", "Invalid PIN")
+         #   print('Wrong PIN..')
+
+
+
+
+
+    def homepage(self):
+        try:
+
+            username = self.username_entry.get()
+            customtkinter.CTkFrame(self, width=925, height=550, fg_color='#feb13d').place(x=0, y=0)
+
+            self.home_img = ImageTk.PhotoImage(Image.open('C:\\Users\\amy\\Downloads\\home.png').resize((40, 40)))
+            self.app_img = ImageTk.PhotoImage(Image.open('C:\\Users\\amy\\Downloads\\applogo.png').resize((250, 330)))
+            self.profile_img = ImageTk.PhotoImage(Image.open('C:\\Users\\amy\\Downloads\\user.png').resize((40, 40)))
+            self.deposit_img = ImageTk.PhotoImage(
+                Image.open('C:\\Users\\amy\\Downloads\\deposit.png').resize((50, 50)))
+            self.withdraw_img = ImageTk.PhotoImage(
+                Image.open('C:\\Users\\amy\\Downloads\\withdraw.png').resize((50, 50)))
+            self.trasnfer_img = ImageTk.PhotoImage(
+                Image.open('C:\\Users\\amy\\Downloads\\transfer.png').resize((50, 50)))
+            self.change_pin_img = ImageTk.PhotoImage(
+                Image.open('C:\\Users\\amy\\Downloads\\logo.png').resize((50, 50)))
+            self.bill_img = ImageTk.PhotoImage(
+                Image.open('C:\\Users\\amy\\Downloads\\bill.png').resize((50, 50)))
+            self.topup_img = ImageTk.PhotoImage(
+                Image.open('C:\\Users\\amy\\Downloads\\top-up.png').resize((50, 50)))
+            self.invite_img = ImageTk.PhotoImage(
+                Image.open('C:\\Users\\amy\\Downloads\\add-friend.png').resize((50, 50)))
+
+            self.home_frame = customtkinter.CTkFrame(self, width=250, height=500, fg_color='#ff7302',
+                                                     corner_radius=30).place(x=30, y=20)
+            self.label = customtkinter.CTkLabel(self, image=self.app_img).place(x=30, y=140)
+            self.account_info_frame = customtkinter.CTkFrame(self, width=600, height=120, fg_color='#ff7302',
+                                                             border_color='#ff7302', border_width=6,
+                                                             corner_radius=30).place(x=300, y=20)
+            self.account_info_label = customtkinter.CTkLabel(self, fg_color='#ff7302', text_color='white',
+                                                             text_font=('yu gothi ui', 12, 'bold'),
+                                                             text=f" {user_login[1].upper()} {user_login[2].upper()}\n BALANCE : ${user_login[13]}.00\n {user_login[7].upper()} ACCOUNT\n ACCOUNT NO : {user_login[12]}", anchor="w", justify=LEFT)
+            self.account_info_label.place(x=325, y=40)
+            self.functions_frame = customtkinter.CTkFrame(self, width=600, height=200, fg_color='#ff7302',
+                                                          corner_radius=30).place(x=300, y=150)
+            self.functions_frame2 = customtkinter.CTkFrame(self, width=600, height=150, border_color='#ff7302',
+                                                           border_width=6, fg_color='#ff7302',
+                                                           corner_radius=30).place(x=300, y=370)
+            self.billsbutton = customtkinter.CTkButton(self, width=100, height=80, border_width=3, border_color='white', image=self.bill_img, text='Pay Bills',
+                                                             bg_color='#ff7302', fg_color='silver', command=self.billspage,
+                                                             hover_color='#87CEFA',
+                                                             corner_radius=20)
+            self.billsbutton.place(x=330, y=400)
+            self.topupbutton = customtkinter.CTkButton(self, width=100, height=80, border_width=3, image=self.topup_img, border_color='white',
+                                                       text='Top Up',
+                                                       bg_color='#ff7302', fg_color='silver', command=self.topup_page,
+                                                       hover_color='#87CEFA',
+                                                       corner_radius=20)
+            self.topupbutton.place(x=520, y=400)
+            self.invitebutton = customtkinter.CTkButton(self, width=100, height=80, border_width=3, image=self.invite_img,
+                                                        border_color='white',
+                                                        text='Invite/Redeem',
+                                                        bg_color='#ff7302', fg_color='silver',
+                                                        hover_color='#87CEFA',
+                                                        corner_radius=20)
+            self.invitebutton.place(x=680, y=400)
+            self.deposit_button = customtkinter.CTkButton(self, width=100, height=80, border_width=3,
+                                                          border_color='white', text='', command=self.depositpage,
+                                                          bg_color='#ff7302', fg_color='silver', hover_color='#87CEFA',
+                                                          image=self.deposit_img, corner_radius=40).place(x=350, y=190)
+            self.withdrawal_button = customtkinter.CTkButton(self, width=100, height=80, border_width=3,
+                                                             command=self.withdrawpage,
+                                                             image=self.withdraw_img, border_color='white', text='',
+                                                             bg_color='#ff7302', fg_color='silver',
+                                                             hover_color='#87CEFA',
+                                                             corner_radius=40).place(x=480, y=190)
+            self.transfer_button = customtkinter.CTkButton(self, width=100, height=80, border_width=3,
+                                                           border_color='white', text='', cursor='hand2',
+                                                           command=self.transferpage,
+                                                           bg_color='#ff7302', fg_color='silver', hover_color='#87CEFA',
+                                                           image=self.trasnfer_img, corner_radius=40).place(x=620,
+                                                                                                            y=190)
+            self.change_pin_button = customtkinter.CTkButton(self, width=100, height=80, border_width=3,
+                                                             border_color='white', text='', cursor='hand2',
+                                                             command=self.change_pin_page,
+                                                             bg_color='#ff7302', fg_color='silver',
+                                                             hover_color='#87CEFA',
+                                                             image=self.change_pin_img, corner_radius=40).place(x=750,
+                                                                                                                y=190)
+            self.logout_button = customtkinter.CTkButton(self, width=120, height=40, border_width=2,
+                                                         border_color='white',
+                                                         text='LOG OUT', command=self.logout,
+                                                         bg_color='#ff7302', fg_color='gold', hover_color='#feb13d',
+                                                         corner_radius=40).place(x=85, y=475)
+            self.profile_button = customtkinter.CTkButton(self, width=100, height=80, border_width=6,
+                                                          border_color='orange',
+                                                          text='',
+                                                          bg_color='#ff7302', fg_color='silver', image=self.profile_img,
+                                                          hover_color='silver', corner_radius=40).place(x=750, y=40)
+            self.home_button = customtkinter.CTkButton(self, width=100, height=80, border_width=6,
+                                                       border_color='orange',
+                                                       text='', command=self.homepage,
+                                                       bg_color='#ff7302', fg_color='white', image=self.home_img,
+                                                       hover_color='#feb13d', corner_radius=40).place(x=100, y=50)
+            self.hometext = customtkinter.CTkLabel(self, text='HOME', bg_color='#ff7302', fg_color='#ff7302',
+                                                   text_color='white',
+                                                   corner_radius=12, text_font=('Arial Black', 18, 'bold')).place(x=80,
+                                                                                                                  y=130)
+            self.deposittext = customtkinter.CTkLabel(self, text='DEPOSIT', bg_color='#ff7302',
+                                                      fg_color='#ff7302', text_color='white',
+                                                      corner_radius=12, text_font=('Arial Black', 13, 'bold')).place(
+                x=325,
+                y=280)
+            self.withdrawaltext = customtkinter.CTkLabel(self, text='WITHDRAW', bg_color='#ff7302',
+                                                         fg_color='#ff7302', text_color='white',
+                                                         corner_radius=12, text_font=('Arial Black', 13, 'bold')).place(
+                x=460,
+                y=280)
+            self.transfertext = customtkinter.CTkLabel(self, text='TRANSFER', bg_color='#ff7302',
+                                                       fg_color='#ff7302', text_color='white',
+                                                       corner_radius=12, text_font=('Arial Black', 13, 'bold')).place(
+                x=600,
+                y=280)
+            self.change_pin_text = customtkinter.CTkLabel(self, text='CHANGE PIN', bg_color='#ff7302',
+                                                          fg_color='#ff7302', text_color='white',
+                                                          corner_radius=12,
+                                                          text_font=('Arial Black', 13, 'bold')).place(x=730,y=280)
+
+        except NameError as e:
+            pass
+
+    def signup(self):
+        signup = customtkinter.CTkToplevel(self)
+        signup.geometry("560x450")
+        signup.title('Sign Up To Horizons Bank')
+        signup.resizable(0, 0)
+        signup.configure(fg_color='#feb13d')
+        signup.iconbitmap('C:\\Users\\amy\\Downloads\\icon.ico')
+        customtkinter.CTkLabel(signup, text='Firstname       ', text_font=('yu gothic ui', 10),
+                               text_color='white').place(x=0,
+                                                         y=10)
+        signup.fname_entry = customtkinter.CTkEntry(signup, width=250, height=30, border_width=3, fg_color='white',
+                                                    text_color='#404040', placeholder_text='Enter First Name',
+                                                    bg_color='#feb13d', border_color='orange', corner_radius=12)
+        signup.fname_entry.place(x=20, y=35)
+        customtkinter.CTkLabel(signup, text='Lastname        ', text_font=('yu gothic ui', 10),
+                               text_color='white').place(x=0,
+                                                         y=65)
+        signup.lname_entry = customtkinter.CTkEntry(signup, width=250, height=30, border_width=3, fg_color='white',
+                                                    text_color='#404040',
+                                                    bg_color='#feb13d', border_color='orange', corner_radius=12,
+                                                    placeholder_text='Enter Last Name', )
+        signup.lname_entry.place(x=20, y=90)
+        customtkinter.CTkLabel(signup, text='Email Address', text_font=('yu gothic ui', 10), text_color='white').place(
+            x=0,
+            y=120)
+        signup.email_entry = customtkinter.CTkEntry(signup, width=250, height=30, border_width=3, fg_color='white',
+                                                    text_color='#404040',
+                                                    bg_color='#feb13d', border_color='orange', corner_radius=12,
+                                                    placeholder_text='Enter Email', )
+        signup.email_entry.place(x=20, y=145)
+        customtkinter.CTkLabel(signup, text='User Contact/Phone Number', text_font=('yu gothic ui', 10),
+                               text_color='white').place(x=290,
+                                                         y=35)
+        signup.phone_entry = customtkinter.CTkEntry(signup, width=250, height=30, border_width=3, fg_color='white',
+                                                    text_color='#404040',
+                                                    bg_color='#feb13d', border_color='orange', corner_radius=12,
+                                                    placeholder_text='Enter Contact')
+        signup.phone_entry.place(x=280, y=60)
+        customtkinter.CTkLabel(signup, text='Address                 ', text_font=('yu gothic ui', 10),
+                               text_color='white').place(x=290,
+                                                         y=90)
+        signup.address_entry = customtkinter.CTkEntry(signup, width=250, height=30, border_width=3, fg_color='white',
+                                                      text_color='#404040',
+                                                      bg_color='#feb13d', border_color='orange', corner_radius=12,
+                                                      placeholder_text='Enter Address')
+        signup.address_entry.place(x=280, y=115)
+        customtkinter.CTkLabel(signup, text='Date Of Birth           ', text_font=('yu gothic ui', 10),
+                               text_color='white').place(x=290,
+                                                         y=145)
+        signup.dob_entry = customtkinter.CTkEntry(signup, width=250, height=30, border_width=3, fg_color='white',
+                                                  text_color='#404040',
+                                                  bg_color='#feb13d', border_color='orange', corner_radius=12,
+                                                  placeholder_text='Date Of Birth: Format(dd-mm-yy)')
+        signup.dob_entry.place(x=280, y=170)
+
+
+        def gender(choice):
+            print('Gender:', choice)
+
+        customtkinter.CTkLabel(signup, text='Gender        ', text_font=('yu gothic ui', 10), text_color='white').place(
+            x=0,
+            y=180)
+        signup.gender_entry = customtkinter.CTkOptionMenu(signup, corner_radius=12, fg_color='#C1CDCD',
+                                                          bg_color='#feb13d',
+                                                          text_color='#404040', dropdown_color='white',
+                                                          dropdown_hover_color='orange',
+                                                          values=['Male', 'Female'], command=gender)
+        signup.gender_entry.place(x=40, y=205)
+
+        def account_type(choice):
+            print('Account Type:', choice)
+
+        customtkinter.CTkLabel(signup, text='Account Type', text_font=('yu gothic ui', 10), text_color='white').place(
+            x=0,
+            y=235)
+        signup.accounttype_entry = customtkinter.CTkOptionMenu(signup, corner_radius=12, fg_color='#C1CDCD',
+                                                               bg_color='#feb13d',
+                                                               text_color='#404040', dropdown_color='white',
+                                                               dropdown_hover_color='orange',
+                                                               values=['Current', 'Savings', 'Corporate'],
+                                                               command=account_type)
+        signup.accounttype_entry.place(x=40, y=260)
+        customtkinter.CTkLabel(signup, text='Username                ', text_font=('yu gothic ui', 10),
+                               text_color='white').place(x=290,
+                                                         y=200)
+        signup.username_entry = customtkinter.CTkEntry(signup, width=250, height=30, border_width=3, fg_color='white',
+                                                       text_color='#404040',
+                                                       bg_color='#feb13d', border_color='orange', corner_radius=12,
+                                                       placeholder_text='Create Username')
+        signup.username_entry.place(x=280, y=225)
+        customtkinter.CTkLabel(signup, text='Password                      ', text_font=('yu gothic ui', 10),
+                               text_color='white').place(x=290,
+                                                         y=255)
+        signup.password_entry = Entry(signup, width=30, fg='#404040', border=1,
+                                    bg='white', font=('Microsoft YaHei UI Light', 10), show='*')
+        signup.password_entry.place(x=280, y=280)
+        customtkinter.CTkLabel(signup, text='Confirm Password                ', text_font=('yu gothic ui', 10),
+                               text_color='white').place(x=290,
+                                                         y=305)
+        signup.password_entry2 = Entry(signup, width=30, fg='#404040', border=1,
+                                      bg='white', font=('Microsoft YaHei UI Light', 10), show='*')
+        signup.password_entry2.place(x=280, y=330)
+        def show1():
+            if signup.password_entry.cget('show') == '*':
+                signup.password_entry.config(show='')
+            else:
+                signup.password_entry.config(show='*')
+        check_button1 = Checkbutton(signup, bg='#feb13d', text='', command=show1)
+        check_button1.place(x=500, y=280)
+        def show1():
+            if signup.password_entry2.cget('show') == '*':
+                signup.password_entry2.config(show='')
+            else:
+                signup.password_entry2.config(show='*')
+        check_button2 = Checkbutton(signup, bg='#feb13d', text='', command=show1)
+        check_button2.place(x=500, y=330)
+
+
+
+
+
+        def register_button():
+            if (len(signup.fname_entry.get()) == 0 or len(signup.lname_entry.get()) == 0 or len(
+                    signup.email_entry.get()) == 0 or len(
+                    signup.phone_entry.get()) == 0 or len(signup.address_entry.get()) == 0 or len(
+                signup.dob_entry.get()) == 0
+                    or len(signup.accounttype_entry.get()) == 0 or len(signup.gender_entry.get()) == 0 or len(
+                        signup.username_entry.get()) == 0
+                    or len(signup.password_entry.get()) == 0 or len(signup.password_entry2.get()) == 0):
+                messagebox.showerror('Registration Error', 'All Entries Are Required For Registration', parent=signup)
+            elif len(signup.password_entry.get()) != len(signup.password_entry2.get()):
+                messagebox.showerror('Mismatch Error', 'Passwords Do Not Match',  parent=signup)
+
+            else:
+                registration_sql(signup.fname_entry.get(), signup.lname_entry.get(), signup.email_entry.get(),
+                                 signup.phone_entry.get(),
+                                 signup.address_entry.get(), signup.dob_entry.get(), signup.accounttype_entry.get(),
+                                 signup.gender_entry.get(),
+                                 signup.username_entry.get(), signup.password_entry.get())
+                messagebox.showinfo('Registered', 'You have succcessfully registered\nClick OK to Return back to App_Page and Login', parent=signup)
+                signup.destroy()
+        customtkinter.CTkButton(signup, width=300, height=30, fg_color='#ff7302',
+                                bg_color='#feb13d', text='Submit', corner_radius=17,
+                                text_font=('century', 9), cursor='hand2', command=register_button,
+                                hover_color='#FFC125', text_color='white').place(x=120, y=400)
+
+
+
+
+    def logout(self):
+        self.account_info_label.place_forget()
+        self.username_entry.delete(0, END)
+        self.password_entry.delete(0, END)
+        print(f'Application Termninated\n{user_login[1]} logged out')
+        print(' ')
+        customtkinter.CTkFrame(self, width=925, height=550, fg_color='#feb13d').place(x=0, y=0)
+
+        self.app_img = ImageTk.PhotoImage(Image.open('C:\\Users\\amy\\Downloads\\applogo.png').resize((350, 550)))
+        self.label = customtkinter.CTkLabel(self, image=self.app_img).place(x=20, y=2)
+        self.welcome_label = customtkinter.CTkLabel(self.label, text='Welcome, Guest', bg_color='#ff7302',
+                                                    fg_color='#ff7302', text_color='white',
+                                                    corner_radius=12, text_font=('Arial Black', 18, 'bold')).place(x=40,
+                                                                                                                   y=15)
+        self.login_frame = customtkinter.CTkFrame(self, width=430, height=350, border_width=7, fg_color='#ff7302',
+                                                  bg_color='#feb13d',
+                                                  border_color='orange', corner_radius=25).place(x=450, y=120)
+        Label(self.login_frame, text='LOG IN', fg='white', bg='#ff7302',
+              font=('Arial Black', 23, 'bold', 'underline')).place(
+            x=590, y=135)
+        Label(self.login_frame, text='USERNAME', fg='white', bg='#ff7302',
+              font=('Arial Black', 13, 'bold', 'underline')).place(
+            x=600, y=195)
+        self.username_entry = customtkinter.CTkEntry(self.login_frame, width=250, height=40, border_width=4,
+                                                     fg_color='white',
+                                                     text_color='#404040', text_font='10',
+                                                     bg_color='#ff7302', border_color='orange', corner_radius=12,
+                                                     placeholder_text='Enter Username')
+        self.username_entry.place(x=530, y=225)
+        Label(self.login_frame, text='PASSWORD', fg='white', bg='#ff7302',
+              font=('Arial Black', 12, 'bold', 'underline')).place(
+            x=600, y=275)
+        self.password_entry = Entry(self.login_frame, width=35, fg='#404040', border=1,
+                                    bg='white', font=('Microsoft YaHei UI Light', 10), show='*')
+        self.password_entry.place(x=530, y=305)
+        check_button = Checkbutton(self.login_frame, bg='#ff7302', text='', command=self.show)
+        check_button.place(x=790, y=305)
+        customtkinter.CTkButton(self.login_frame, width=120, height=30, fg_color='orange',
+                                border_color='white', text='Log In', corner_radius=17, bg_color='#ff7302',
+                                text_font=('Arial Black', 10), command=self.login,
+                                hover_color='#FFC125', text_color='white').place(x=600, y=360)
+        Label(self.login_frame, text='Don\'t Have An Account Yet? ', fg='white', bg='#ff7302',
+              font=('yu gothic ui', 10, 'bold')).place(x=530, y=420)
+        self.signup_button = customtkinter.CTkButton(self.login_frame, width=80, height=30, fg_color='orange',
+                                                     text='SIGN  UP', corner_radius=17, bg_color='#ff7302',
+                                                     text_font=('arial black', 9), command=self.signup,
+                                                     hover_color='#FFC125', text_color='white').place(x=715, y=415)
+
+
+if __name__ == "__main__":
+    app = App()
+    app.mainloop()
